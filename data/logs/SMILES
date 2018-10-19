@@ -1,0 +1,12 @@
+CC(O)CNCOc1cccc(F)c1	0.23
+Cc1ccccc1CN(C)S(=O)(=O)c1ccccc1	0.37
+CCS(=O)(=O)c1ccc(C(=O)O)c(C)c1	0.43
+CNC(=O)C(C)NCc1ccc(S(N)(=O)=O)c(C)c1	0.47
+CCC(C)CNC(=O)C(C)NC(=O)CSc1cccc(C)c1	0.34
+CSCCCNCC(C)Sc1ccc(F)cc1	0.27
+CCC(C)(C)NC(=O)c1cccc(CCN=C(N)S(=O)(=O)O)c1	0.31
+CC(C)OCCOC(=O)Nc1ccc(CSC)c(Cl)c1	0.32
+COC(=O)C=Cc1ccc(S(C)(=O)=O)cc1	0.46
+CCCNC(=O)N(C)CCc1ccccc1	0.31
+COCC(=O)NNC(=O)CNCCOc1ccc(CC(=O)CC)cc1	0.3
+CC(C)CC(=O)Nc1ccccn1	0.27
