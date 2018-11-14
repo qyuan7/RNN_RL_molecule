@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+
+import torch
+from torch.utils.data import DataLoader
+import pickle
+from rdkit import Chem
+from rdkit import rdBase
+from tqdm import tqdm
+
+from data_structs import MolData, Vocabulary
+from model import RNN
+from utils import Variable, decrease_learning_rate, unique
+rdBase.DisableLog('rdApp.error')
+
+
+def train_model():
+    """Do transfer learning for generating SMILES"""
+    voc = Vocabulary(init_from_file='data/Voc')
+    moldata = MolData('monomer_db.csv', voc)
+    # Monomers 67 and 180 were removed because of the unseen [C-] in voc
+    # DAs containing [se] [SiH2] [n] removed: 38 molecules
+    data = DataLoader(moldata, batch_size=64, shuffle=True, drop_last=False,
+                      collate_fn=MolData.collate_fn)
+    transfer_model = RNN(voc)
+
+    if torch.cuda.is_available():
+        transfer_model.rnn.load_state_dict(torch.load('data/Prior.ckpt'))
+    else:
+        transfer_model.rnn.load_state_dict(torch.load('data/Prior.ckpt', map_location=lambda storage, loc: storage))
+
+    # for param in transfer_model.rnn.parameters():
+    #     param.requires_grad = False
+    optimizer = torch.optim.Adam(transfer_model.rnn.parameters(), lr=0.001)
+
+    for epoch in range(1, 10):
+
+        for step, batch in tqdm(enumerate(data), total=len(data)):
+            seqs = batch.long()
+            log_p, _ = transfer_model.likelihood(seqs)
+            loss = -log_p.mean()
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if step % 5 == 0 and step != 0:
+                decrease_learning_rate(optimizer, decrease_by=0.03)
+                tqdm.write('*'*50)
+                tqdm.write("Epoch {:3d}   step {:3d}    loss: {:5.2f}\n".format(epoch, step, loss.data[0]))
+                seqs, likelihood, _ = transfer_model.sample(128)
+                valid = 0
+                for i, seq in enumerate(seqs.cpu().numpy()):
+                    smile = voc.decode(seq)
+                    if Chem.MolFromSmiles(smile):
+                        valid += 1
+                    if i < 5:
+                        tqdm.write(smile)
+                tqdm.write("\n{:>4.1f}% valid SMILES".format(100*valid/len(seqs)))
+                tqdm.write("*"*50 + '\n')
+                torch.save(transfer_model.rnn.state_dict(), "data/transfer_model2.ckpt")
+
+        torch.save(transfer_model.rnn.state_dict(), "data/transfer_modelw.ckpt")
+
+
+def sample_smiles(nums):
+    """Sample smiles using the transferred model"""
+    voc = Vocabulary(init_from_file='data/voc')
+    transfer_model = RNN(voc)
+    output = open('sampled_smi.txt', 'w')
+
+    if torch.cuda.is_available():
+        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model2.ckpt'))
+    else:
+        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model2.ckpt',
+                                                      map_location=lambda storage, loc:storage))
+
+    for param in transfer_model.rnn.parameters():
+        param.requires_grad = False
+
+    seqs, likelihood, _ = transfer_model.sample(nums)
+    valid = 0
+    double_br = 0
+    unique_idx = unique(seqs)
+    seqs = seqs[unique_idx]
+    for i, seq in enumerate(seqs.cpu().numpy()):
+
+        smile = voc.decode(seq)
+        if Chem.MolFromSmiles(smile):
+            valid += 1
+            if smile.count('Br') == 2:
+                double_br += 1
+                output.write(smile+'\n')
+    tqdm.write('\n{} valid SMILES, {} with double Br'.format(valid, double_br))
+    output.close()
+
+
+
+if __name__ == "__main__":
+    sample_smiles(1024)
+
