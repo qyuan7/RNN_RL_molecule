@@ -62,16 +62,16 @@ def train_model():
         torch.save(transfer_model.rnn.state_dict(), "data/transfer_modelw.ckpt")
 
 
-def sample_smiles(nums):
+def sample_smiles(nums, outfn):
     """Sample smiles using the transferred model"""
     voc = Vocabulary(init_from_file='data/voc')
     transfer_model = RNN(voc)
-    output = open('sampled_smi.txt', 'w')
+    output = open(outfn, 'w')
 
     if torch.cuda.is_available():
-        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model2.ckpt'))
+        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model_for_DA2.ckpt'))
     else:
-        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model2.ckpt',
+        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model_for_DA2.ckpt',
                                                       map_location=lambda storage, loc:storage))
 
     for param in transfer_model.rnn.parameters():
@@ -87,14 +87,15 @@ def sample_smiles(nums):
         smile = voc.decode(seq)
         if Chem.MolFromSmiles(smile):
             valid += 1
-            if smile.count('Br') == 2:
-                double_br += 1
-                output.write(smile+'\n')
-    tqdm.write('\n{} valid SMILES, {} with double Br'.format(valid, double_br))
+            #if smile.count('Br') == 2:
+            #    double_br += 1
+            output.write(smile+'\n')
+    tqdm.write('\n{} molecules sampled, {} valid SMILES, {} with double Br'.format(nums, valid, double_br))
     output.close()
 
 
 
 if __name__ == "__main__":
-    sample_smiles(1024)
-
+    for i in [1024, 2048, 4096, 8192, 16384, 32768]:
+    #for i in [32768]:
+        sample_smiles(i, 'sampled_da_'+str(i)+'.csv')
