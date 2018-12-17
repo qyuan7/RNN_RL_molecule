@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from data_structs import MolData, Vocabulary
 from model import RNN
-from util import Variable, decrease_learning_rate
+from utils import Variable, decrease_learning_rate
 rdBase.DisableLog('rdApp.error')
 
 
