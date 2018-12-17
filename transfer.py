@@ -96,6 +96,6 @@ def sample_smiles(nums, outfn):
 
 
 if __name__ == "__main__":
-    for i in [1024, 2048, 4096, 8192, 16384, 32768]:
-    #for i in [32768]:
+    #for i in [1024, 2048, 4096, 8192, 16384, 32768]:
+    for i in [1024]:
         sample_smiles(i, 'sampled_da_'+str(i)+'.csv')

@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-from util import Variable
+from utils import Variable
 
 
 class MultiGRU(nn.Module):
@@ -83,8 +83,8 @@ class RNN():
         entropy = Variable(torch.zeros(batch_size))
         for step in range(seq_length):
             logits, h = self.rnn(x[:, step], h)
-            log_prob = F.log_softmax(logits)
-            prob = F.softmax(logits)
+            log_prob = F.log_softmax(logits, dim=1)
+            prob = F.softmax(logits, dim=1)
             log_probs += NLLLoss(log_prob, target[:, step])
             entropy += -torch.sum((log_prob * prob), 1)
         return log_probs, entropy
@@ -116,16 +116,16 @@ class RNN():
 
         for step in range(max_length):
             logits, h = self.rnn(x, h)
-            prob = F.softmax(logits)
-            log_prob = F.log_softmax(logits)
-            x = torch.multinomial(prob).view(-1)
+            prob = F.softmax(logits, dim=1)
+            log_prob = F.log_softmax(logits, dim=1)
+            x = torch.multinomial(prob, 1).view(-1)
             sequences.append(x.view(-1, 1))
             log_probs += NLLLoss(log_prob, x)
             entropy += -torch.sum((log_prob*prob), 1)
 
             x = Variable(x.data)
             EOS_sampled = (x == self.voc.vocab['EOS']).data
-            finished = torch.ge(finshed + EOS_sampled, 1)
+            finished = torch.ge(finished + EOS_sampled, 1)
             if torch.prod(finished) == 1: break
 
         sequences = torch.cat(sequences, 1)

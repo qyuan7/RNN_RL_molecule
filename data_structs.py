@@ -33,7 +33,7 @@ class Vocabulary(object):
             smiles_matrix[i] = self.vocab[char]
         return smiles_matrix
 
-    def deecode(self, matrix):
+    def decode(self, matrix):
         """Takes an array of indices and returns the corresponding SMILES"""
         chars = []
         for i in matrix:
@@ -63,7 +63,7 @@ class Vocabulary(object):
         """Adds chars to the vocabulary"""
         for char in chars:
             self.additional_chars.add(char)
-        char_list = list(self.add_characters())
+        char_list = list(self.additional_chars)
         char_list.sort()
         self.chars = char_list + self.special_tokens
         self.vocab_size = len(self.chars)
