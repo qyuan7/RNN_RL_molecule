@@ -103,11 +103,11 @@ class MolData(Dataset):
     def __getitem__(self, i):
         mol = self.smiles[i]
         tokenized = self.voc.tokenize(mol)
-        encoded = self.voc.encod(tokenized)
+        encoded = self.voc.encode(tokenized)
         return Variable(encoded)
 
     def __len__(self):
-        return len(self.smile)
+        return len(self.smiles)
 
     def __str__(self):
         return "Dataset containing {} structures".format(len(self))

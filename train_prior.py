@@ -19,7 +19,7 @@ def pretrain(restore_from=None):
     voc = Vocabulary(init_from_file="data/Voc")
 
     # Create a Dataset from a SMILES file
-    moldata = MolData("data/mols_filtered.smi", voc)
+    moldata = MolData("data/ChEMBL_filtered", voc)
     data = DataLoader(moldata, batch_size=128, shuffle=True, drop_last=True,
                      collate_fn=MolData.collate_fn)
 
@@ -29,7 +29,7 @@ def pretrain(restore_from=None):
     if restore_from:
         Prior.rnn.load_state_dict(torch.loag(restore_from))
 
-    optimizer = torch.potim.Adam(Prior.rnn.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(Prior.rnn.parameters(), lr=0.001)
 
     for epoch in range(1, 6):
         # When training on a few million compounds, this model converges
@@ -58,16 +58,16 @@ def pretrain(restore_from=None):
                 seqs, likelihood, _ = Prior.sample(128)
                 valid = 0
                 for i, seq in enumerate(seqs.cpu().numpy()):
-                    smile = voc.deecode(seq)
+                    smile = voc.decode(seq)
                     if Chem.MolFromSmiles(smile):
                         valid += 1
                     if i < 5:
                         tqdm.write(smile)
                 tqdm.write("\n{:>4.1f}% valid SMILES".format(100 * valid / len(seqs)))
                 tqdm.write('*'*50 + '\n')
-                torch.save(Prior.rnn.state_dict(), 'data/Prior.ckpt')
+                torch.save(Prior.rnn.state_dict(), 'data/Prior_local.ckpt')
         # Save the prior
-        torch.save(Prior.rnn.state_dict(), 'data/Prior.ckpt')
+        torch.save(Prior.rnn.state_dict(), 'data/Prior_local.ckpt')
 
 
 if __name__ == '__main__':
