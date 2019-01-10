@@ -6,7 +6,7 @@ import pickle
 from rdkit import Chem
 from rdkit import rdBase
 from tqdm import tqdm
-
+from rdkit.Chem import AllChem
 from data_structs import MolData, Vocabulary
 from model import RNN
 from utils import Variable, decrease_learning_rate, unique
@@ -86,10 +86,16 @@ def sample_smiles(nums, outfn):
 
         smile = voc.decode(seq)
         if Chem.MolFromSmiles(smile):
-            valid += 1
+            try:
+                AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile), 2, 1024)
+                valid += 1
+                output.write(smile+'\n')
+            #valid += 1
             #if smile.count('Br') == 2:
             #    double_br += 1
-            output.write(smile+'\n')
+            #output.write(smile+'\n')
+            except:
+                continue
     tqdm.write('\n{} molecules sampled, {} valid SMILES, {} with double Br'.format(nums, valid, double_br))
     output.close()
 
