@@ -13,10 +13,24 @@ from utils import Variable, decrease_learning_rate, unique
 rdBase.DisableLog('rdApp.error')
 
 
+def cano_smi_file(fname, outfn):
+    """
+    canonicalize smile file
+    """
+    out = open(outfn, 'w')
+    with open (fname) as f:
+        for line in f:
+            smi = line.rstrip()
+            can_smi = Chem.MolToSmiles(Chem.MolFromSmiles(smi))
+            out.write(can_smi + '\n')
+    out.close()
+
+
 def train_model():
     """Do transfer learning for generating SMILES"""
     voc = Vocabulary(init_from_file='data/Voc')
-    moldata = MolData('monomer_db.csv', voc)
+    cano_smi_file('refined_smii.csv', 'refined_smii_cano.csv')
+    moldata = MolData('refined_smii_cano.csv', voc)
     # Monomers 67 and 180 were removed because of the unseen [C-] in voc
     # DAs containing [se] [SiH2] [n] removed: 38 molecules
     data = DataLoader(moldata, batch_size=64, shuffle=True, drop_last=False,
