@@ -64,7 +64,7 @@ def save_predict_results():
     gen_mols = []
     gen_fps = []
     for i in [1024, 2048, 4096, 8192, 16384, 32768]:
-        gen_df = pd.read_csv('./sampled_da_info/sampled_da'+str(i)+'_smi.csv', header=None)
+        gen_df = pd.read_csv('./sampled_da_cano/sampled_da_cano_'+str(i)+'local_prior.csv', header=None)
         gen_list = gen_df[0].tolist()
         over, num, smi_list = get_smi_list_overlap(ori_list, gen_list)
         smi_mols = get_mols(smi_list)
@@ -82,8 +82,8 @@ def save_predict_results():
     unique_df['Gaps'] = predict_property('gbdt_regessor_gap.joblib', gen_fps)
     unique_df['Dips'] = predict_property('gbdt_regessor_dip.joblib', gen_fps)
     promising_df = unique_df.loc[(unique_df['Gaps'] <= 2.0) & (unique_df['Dips']<=2.0)]
-    unique_df.to_csv('unique_sampled_smiles_corr2.csv', index=False)
-    promising_df.to_csv('Gen_promisings.csv', index=False)
+    unique_df.to_csv('unique_sampled_smiles_corr2_cano.csv', index=False)
+    promising_df.to_csv('Gen_promisings_cano.csv', index=False)
 
 
 def tsne_projection(train_file, gen_file):
@@ -92,35 +92,45 @@ def tsne_projection(train_file, gen_file):
     Returns: plot of the tsne result
 
     """
-    train_smiles = pd.read_csv(train_file, header=None)
-    train_smiles['label'] = 'train'
+    train_data = pd.read_csv(train_file)
+    def get_ori_prom(row):
+        if row['gaps'] <= 2 and row['dips'] <=2:
+            return 'train_promising'
+        else:
+            return 'train'
+    train_data['label'] = train_data.apply(get_ori_prom, axis=1)
+    train_data = train_data.drop(['id', 'gaps', 'dips', 'class'], axis=1)
     gen_prom_smiles = pd.read_csv(gen_file)
     gen_prom_smiles = gen_prom_smiles.drop(['Group', 'Gaps', 'Dips'], axis=1)
     gen_prom_smiles['label'] = 'gen'
-    train_smiles.rename(columns={0: "SMILES"}, inplace=True)
-    all_smiles = pd.concat([train_smiles, gen_prom_smiles])
-    mols = get_mols(all_smiles.SMILES)
+    all_smi = pd.concat([train_data, gen_prom_smiles])
+    mols = get_mols(all_smi.SMILES)
     fps, _ = get_fingerprints(mols)
     fp_embeded = TSNE(n_components=2).fit_transform(fps)
-    return fp_embeded, len(train_smiles)
+    all_smi['tsne1'] = fp_embeded[:, 0]
+    all_smi['tsne2'] = fp_embeded[:, 1]
+    return all_smi, len(train_data)
 
 
-def plot_tsne(fps, num_train):
+def plot_tsne(df, num_train):
+    groups = df.groupby('label')
+    colors = ['greenyellow', 'blue', 'red']
     fig, ax = plot.subplots()
-    ax.scatter(fps[:num_train,0], fps[:num_train,1],
-               c='blue', s=90,edgecolors='black', linewidths=0.4, label='train')
-    ax.scatter(fps[num_train:,0], fps[num_train:,1],
-               c='greenyellow', s=90, edgecolors='black', linewidths=0.4, label='generated')
-    ax.grid(True)
-    ax.axis([-70, 70, -70, 70])
-    ax.legend(loc='best',frameon=False, prop={'size':15})
+    ax.set_prop_cycle(color=colors)
+    for name, group in groups:
+        ax.scatter(group.tsne1, group.tsne2, marker='o', label=name, edgecolors='black', linewidths=0.4, s=25)
+    ax.legend(loc='best', frameon=False, prop={'size': 20})
+
+    ax.grid(True, alpha=0.75)
+    #ax.axis([-70, 70, -70, 70])
+    ax.legend(loc='best',frameon=False, prop={'size':10})
     return ax
 
 def main():
     save_predict_results()
-    fp_embeded, num = tsne_projection('refined_smii.csv', 'Gen_promisings.csv')
-    ax = plot_tsne(fp_embeded, num_train=num)
-    plot.savefig('tsne_plot.png', dpi=300)
+    smi_df, num = tsne_projection('refined_smii_with_data.csv', 'Gen_promisings_cano.csv')
+    ax = plot_tsne(smi_df, num_train=num)
+    plot.savefig('tsne_plot_cano.png', dpi=300)
 
 
 if __name__ == '__main__':
