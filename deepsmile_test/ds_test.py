@@ -33,8 +33,11 @@ def convert_file(smi_file):
         smi_file: path of input file containing SMILE strings
 
     Returns:
+        percentage of successfully converted smiles
+        file containing deepsmile representations
 
     """
+    out = open('deep'+smi_file, 'w')
     try:
         smi_f = pd.read_csv(smi_file, header=None)
     except FileNotFoundError:
@@ -57,10 +60,16 @@ def convert_file(smi_file):
     smi_can_lst = can_smile(smi_lst)
     decoded_can_lst = can_smile(decoded_lst)
     num_recover = sum(smi_can_lst[i] == decoded_can_lst[i] for i in range(len(smi_can_lst)))
+    for i in range(len(smi_lst)):
+        if smi_can_lst[i] == decoded_can_lst[i]:
+            out.write(deep_lst[i]+'\n')
+    out.close()
+
+
     return num_decode, num_recover, num_decode*100/len(smi_lst), num_recover*100/len(smi_lst)
 
 
 if __name__ == '__main__':
-    num,rnum, percent,rpercent = convert_file(input())
+    num,rnum, percent,rpercent= convert_file(input())
     print('{} SMILES successfully decoded, which is {}% of the input SMILES.'.format(num, percent))
     print('{} SMILES successfully recovered, which is {}% of the input SMILES.'.format(rnum, rpercent))

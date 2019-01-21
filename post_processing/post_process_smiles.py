@@ -49,7 +49,6 @@ def predict_property(model_file, fps):
     return model.predict(fps)
 
 
-
 def save_predict_results():
     """
     Predict the gap and dip of generated SMILES from files and save the results
