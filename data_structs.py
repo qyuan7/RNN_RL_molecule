@@ -7,6 +7,7 @@ import sys
 import time
 import torch
 from torch.utils.data import Dataset
+import deepsmiles
 
 from utils import Variable
 
@@ -235,14 +236,52 @@ def canonicalize_smiles_from(fname):
             mol = Chem.MolFromSmiles(smiles)
             if filter_mol(mol):
                 smiles_list.append(Chem.MolToSmiles(mol))
-            print("{} SMILES retrieved".format(len(smile_list)))
+            print("{} SMILES retrieved".format(len(smiles_list)))
         return smiles_list
+
+
+def convert_to_deepsmile(smiles_list):
+    """
+    Convert smiles list to deepsmiles list. Make sure the smiles list is canonical.
+    Args:
+        smiles_list:
+
+    Returns: deepsmiles list
+
+    """
+    converter = deepsmiles.Converter(rings=True, branches=True)
+    deep_lst = [converter.encode(smi) for smi in smiles_list]
+    decoded_lst = []
+    final_deep_lst = []
+    num_decode, num_recover = 0, 0
+    for i in range(len(deep_lst)):
+        try:
+            decoded = converter.decode(deep_lst[i])
+
+        except deepsmiles.DecodeError as e:
+            decoded = None
+            print("DecodeError! Error message was {}".format(e.message))
+        decoded_lst.append(decoded)
+        if decoded:
+            num_decode += 1
+    decoded_can_lst = []
+    for item in decoded_lst:
+        if Chem.MolFromSmiles(item) is not None:
+            can_item = Chem.MolToSmiles(Chem.MolFromSmiles(item))
+            decoded_can_lst.append(can_item)
+        else:
+            decoded_can_lst.append(None)
+
+    for i in range(len(smiles_list)):
+        if smiles_list[i] == decoded_can_lst[i]:
+            final_deep_lst.append(deep_lst[i])
+    return final_deep_lst
 
 
 def filter_mol(mol, max_heavy_atom=50, min_heavy_atom=10, element_list=[6,7,8,9,16,17,35]):
     """Filters molecules on number of heavy atoms and atom types"""
     if mol is not None:
-        num_heavy = min_heavy_atom<mol.GetNumHeavyAtoms()<max_heavy_atoms
+        num_heavy = min_heavy_atom<mol.GetNumHeavyAtoms()<max_heavy_atom
         elements = all([atom.GetAtomicNum() in element_list for atom in mol.GetAtoms()])
         if num_heavy and elements:
             return True
@@ -314,7 +353,7 @@ def construct_vocabulary(smiles_list):
                 chars = [unit for unit in char]
                 [add_chars.add(unit) for unit in chars]
     print("Number of characters: {}".format(len(chars)))
-    with open('data/Voc', 'w') as f:
+    with open('data/Voc_deep', 'w') as f:
         for char in add_chars:
             f.write(char + '\n')
     return add_chars
@@ -324,9 +363,10 @@ if __name__ == "__main__":
     smiles_file = sys.argv[1]
     print("Reading smiles...")
     smiles_list = canonicalize_smiles_from(smiles_file)
+    deep_lst = convert_to_deepsmile(smiles_list)
     print('Constructing vocabulary...')
-    voc_chars = construct_vocabulary(smiles_list)
-    write_smiles_to_file(smiles_list, "data/mols_filtered.smi")
+    voc_chars = construct_vocabulary(deep_lst)
+    write_smiles_to_file(deep_lst, "data/deeps_filtered.smi")
 
 
 
