@@ -76,46 +76,68 @@ def train_model():
         torch.save(transfer_model.rnn.state_dict(), "data/transfer_modelw.ckpt")
 
 
-def sample_smiles(nums, outfn):
+def sample_smiles(nums, outfn, until=False):
     """Sample smiles using the transferred model"""
     voc = Vocabulary(init_from_file='data/voc')
     transfer_model = RNN(voc)
     output = open(outfn, 'w')
 
     if torch.cuda.is_available():
-        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model_for_DA2.ckpt'))
+        transfer_model.rnn.load_state_dict(torch.load('data/tf_model_da_cluster_with_script2.ckpt'))
     else:
-        transfer_model.rnn.load_state_dict(torch.load('data/transfer_model_for_DA2.ckpt',
-                                                      map_location=lambda storage, loc:storage))
+        transfer_model.rnn.load_state_dict(torch.load('data/tf_model_da_cluster_with_script2.ckpt',
+                                                    map_location=lambda storage, loc:storage))
 
     for param in transfer_model.rnn.parameters():
         param.requires_grad = False
 
-    seqs, likelihood, _ = transfer_model.sample(nums)
-    valid = 0
-    double_br = 0
-    unique_idx = unique(seqs)
-    seqs = seqs[unique_idx]
-    for i, seq in enumerate(seqs.cpu().numpy()):
+    if not until:
 
-        smile = voc.decode(seq)
-        if Chem.MolFromSmiles(smile):
-            try:
-                AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile), 2, 1024)
-                valid += 1
-                output.write(smile+'\n')
-            #valid += 1
+        seqs, likelihood, _ = transfer_model.sample(nums)
+        valid = 0
+        double_br = 0
+        unique_idx = unique(seqs)
+        seqs = seqs[unique_idx]
+        for i, seq in enumerate(seqs.cpu().numpy()):
+
+            smile = voc.decode(seq)
+            if Chem.MolFromSmiles(smile):
+                try:
+                    AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile), 2, 1024)
+                    valid += 1
+                    output.write(smile+'\n')
+                except:
+                    continue
             #if smile.count('Br') == 2:
             #    double_br += 1
             #output.write(smile+'\n')
-            except:
-                continue
-    tqdm.write('\n{} molecules sampled, {} valid SMILES, {} with double Br'.format(nums, valid, double_br))
-    output.close()
-
+        tqdm.write('\n{} molecules sampled, {} valid SMILES, {} with double Br'.format(nums, valid, double_br))
+        output.close()
+    else:
+        valid = 0;
+        n_sample = 0
+        while valid < nums:
+            seq, likelihood, _ = transfer_model.sample(1)
+            n_sample += 1
+            seq = seq.cpu().numpy()
+            seq = seq[0]
+            # print(seq)
+            smile = voc.decode(seq)
+            if Chem.MolFromSmiles(smile):
+                try:
+                    AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile), 2, 1024)
+                    valid += 1
+                    output.write(smile + '\n')
+                    if valid % 100 == 0 and valid != 0:
+                        tqdm.write('\n{} valid molecules sampled, with {} of total samples'.format(valid, n_sample))
+                except:
+                    continue
+        tqdm.write('\n{} valid molecules sampled, with {} of total samples'.format(nums, n_sample))
 
 
 if __name__ == "__main__":
+    train_model()
     #for i in [1024, 2048, 4096, 8192, 16384, 32768]:
     for i in [1024]:
         sample_smiles(i, 'sampled_da_'+str(i)+'.csv')
+    #sample_smiles(10000, 'sampled_da_cluster_untill_10000.csv', until=True)

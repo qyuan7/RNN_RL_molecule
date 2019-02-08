@@ -230,13 +230,14 @@ def canonicalize_smiles_from(fname):
     with open(fname, 'r') as f:
         smiles_list = []
         for i, line in enumerate(f):
-            if i % 100000 == 0:
-                print("{} lines processed".format(i))
             smiles = line.split(" ")[0]
             mol = Chem.MolFromSmiles(smiles)
             if filter_mol(mol):
                 smiles_list.append(Chem.MolToSmiles(mol))
-            print("{} SMILES retrieved".format(len(smiles_list)))
+            if (i+1) % 100000 == 0:
+                print("{} lines processed".format(i+1))
+
+                print("{} SMILES retrieved".format(len(smiles_list)))
         return smiles_list
 
 
@@ -278,12 +279,13 @@ def convert_to_deepsmile(smiles_list):
     return final_deep_lst
 
 
-def filter_mol(mol, max_heavy_atom=50, min_heavy_atom=10, element_list=[6,7,8,9,16,17,35]):
+def filter_mol(mol, max_heavy_atom=50, min_heavy_atom=10, element_list=[6,7,8,9,16,17,35,14,34]):
     """Filters molecules on number of heavy atoms and atom types"""
     if mol is not None:
-        num_heavy = min_heavy_atom<mol.GetNumHeavyAtoms()<max_heavy_atom
+        #num_heavy = min_heavy_atom<mol.GetNumHeavyAtoms()<max_heavy_atom
         elements = all([atom.GetAtomicNum() in element_list for atom in mol.GetAtoms()])
-        if num_heavy and elements:
+        #if num_heavy and elements:
+        if elements:
             return True
         else:
             return False
@@ -352,8 +354,8 @@ def construct_vocabulary(smiles_list):
             else:
                 chars = [unit for unit in char]
                 [add_chars.add(unit) for unit in chars]
-    print("Number of characters: {}".format(len(chars)))
-    with open('data/Voc_deep', 'w') as f:
+    print("Number of characters: {}".format(len(add_chars)))
+    with open('data/Voc_new', 'w') as f:
         for char in add_chars:
             f.write(char + '\n')
     return add_chars
@@ -363,10 +365,10 @@ if __name__ == "__main__":
     smiles_file = sys.argv[1]
     print("Reading smiles...")
     smiles_list = canonicalize_smiles_from(smiles_file)
-    deep_lst = convert_to_deepsmile(smiles_list)
+    #deep_lst = convert_to_deepsmile(smiles_list)
     print('Constructing vocabulary...')
-    voc_chars = construct_vocabulary(deep_lst)
-    write_smiles_to_file(deep_lst, "data/deeps_filtered.smi")
+    voc_chars = construct_vocabulary(smiles_list)
+    write_smiles_to_file(smiles_list, "data/ChEMBL_from_gua_filter.smi")
 
 
 
