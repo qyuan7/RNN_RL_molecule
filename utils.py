@@ -13,11 +13,10 @@ def Variable(tensor):
     """
     if isinstance(tensor, np.ndarray):
         tensor = torch.from_numpy(tensor)
+        tensor.requires_grad = True
     if torch.cuda.is_available():
-    #    return torch.Tensor(tensor).cuda()
-    #return torch.Tensor(tensor)
-        return torch.autograd.Variable(tensor).cuda()
-    return torch.autograd.Variable(tensor).cpu()
+        tensor = tensor.cuda()
+    return tensor 
 
 
 def decrease_learning_rate(optimizer, decrease_by=0.01):
