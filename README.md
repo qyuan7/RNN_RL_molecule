@@ -1,5 +1,5 @@
 # RNN and RL model for molecular generation
-
+Prior model adapted and modified from https://arxiv.org/abs/1704.07555
 ## Requirements
 
 Python 3.6
