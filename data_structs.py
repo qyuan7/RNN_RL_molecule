@@ -355,7 +355,7 @@ def construct_vocabulary(smiles_list):
                 chars = [unit for unit in char]
                 [add_chars.add(unit) for unit in chars]
     print("Number of characters: {}".format(len(add_chars)))
-    with open('data/Voc_new', 'w') as f:
+    with open('data/Voc_withda', 'w') as f:
         for char in add_chars:
             f.write(char + '\n')
     return add_chars
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     #deep_lst = convert_to_deepsmile(smiles_list)
     print('Constructing vocabulary...')
     voc_chars = construct_vocabulary(smiles_list)
-    write_smiles_to_file(smiles_list, "data/ChEMBL_from_gua_filter.smi")
+    write_smiles_to_file(smiles_list, "data/ChEMBL_from_gua_withda_filter.smi")
 
 
 
