@@ -232,12 +232,12 @@ def canonicalize_smiles_from(fname):
         for i, line in enumerate(f):
             smiles = line.split(" ")[0]
             mol = Chem.MolFromSmiles(smiles)
-            if filter_mol(mol):
-                smiles_list.append(Chem.MolToSmiles(mol))
+            #if filter_mol(mol): #Don't filter mol for donor-acceptors since heavy atoms with varied elements exhist.
+            smiles_list.append(Chem.MolToSmiles(mol))
             if (i+1) % 100000 == 0:
                 print("{} lines processed".format(i+1))
 
-                print("{} SMILES retrieved".format(len(smiles_list)))
+        print("{} SMILES retrieved".format(len(smiles_list)))
         return smiles_list
 
 
