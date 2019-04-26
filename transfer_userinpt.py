@@ -12,12 +12,19 @@ from model import RNN
 from utils import Variable, decrease_learning_rate, unique
 import torch.nn as nn
 import argparse
+import pandas as pd
 rdBase.DisableLog('rdApp.error')
 
 
 def cano_smi_file(fname, outfn):
     """
     canonicalize smile file
+    Args:
+        fname: location of file containing the SMILES structures
+        outfn: Filename for output Canolized SMILES
+
+    Returns: None
+
     """
     out = open(outfn, 'w')
     with open (fname) as f:
@@ -28,20 +35,35 @@ def cano_smi_file(fname, outfn):
     out.close()
 
 
-def train_model(voc_dir, smi_dir, prior_dir, tf_dir):
-    """Do transfer learning for generating SMILES"""
+def train_model(voc_dir, smi_dir, prior_dir, tf_dir,tf_process_dir,freeze=False):
+    """
+    Transfer learning on target molecules using the SMILES structures
+    Args:
+        voc_dir: location of the vocabulary
+        smi_dir: location of the SMILES file used for transfer learning
+        prior_dir: location of prior trained model to initialize transfer learning
+        tf_dir: location to save the transfer learning model
+        tf_process_dir: location to save the SMILES sampled while doing transfer learning
+        freeze: Bool. If true, all parameters in the RNN will be frozen except for the last linear layer during
+        transfer learning.
+
+    Returns: None
+
+    """
     voc = Vocabulary(init_from_file=voc_dir)
     #cano_smi_file('all_smi_refined.csv', 'all_smi_refined_cano.csv')
     moldata = MolData(smi_dir, voc)
     # Monomers 67 and 180 were removed because of the unseen [C-] in voc
     # DAs containing [C] removed: 43 molecules in 5356; Ge removed: 154 in 5356; [c] removed 4 in 5356
     # [S] 1 molecule in 5356
-    data = DataLoader(moldata, batch_size=16, shuffle=True, drop_last=False,
+    data = DataLoader(moldata, batch_size=64, shuffle=True, drop_last=False,
                       collate_fn=MolData.collate_fn)
     transfer_model = RNN(voc)
-    #for param in transfer_model.rnn.parameters():
-    #    param.requires_grad = False
-    #transfer_model.rnn.linear = nn.Linear(512, voc.vocab_size)
+    # if freeze=True, freeze all parameters except those in the linear layer
+    if freeze:
+        for param in transfer_model.rnn.parameters():
+            param.requires_grad = False
+        transfer_model.rnn.linear = nn.Linear(512, voc.vocab_size)
     if torch.cuda.is_available():
         transfer_model.rnn.load_state_dict(torch.load(prior_dir))
     else:
@@ -49,7 +71,7 @@ def train_model(voc_dir, smi_dir, prior_dir, tf_dir):
                                                       map_location=lambda storage, loc: storage))
 
     optimizer = torch.optim.Adam(transfer_model.rnn.parameters(), lr=0.0005)
-
+    transfer_process_df = pd.DataFrame(columns=['SMILES', 'Epoch'])
     for epoch in range(1, 11):
 
         for step, batch in tqdm(enumerate(data), total=len(data)):
@@ -61,7 +83,7 @@ def train_model(voc_dir, smi_dir, prior_dir, tf_dir):
             loss.backward()
             optimizer.step()
 
-            if step % 3 == 0 and step != 0:
+            if step % 80 == 0 and step != 0:
                 decrease_learning_rate(optimizer, decrease_by=0.03)
                 tqdm.write('*'*50)
                 tqdm.write("Epoch {:3d}   step {:3d}    loss: {:5.2f}\n".format(epoch, step, loss.data[0]))
@@ -76,8 +98,20 @@ def train_model(voc_dir, smi_dir, prior_dir, tf_dir):
                 tqdm.write("\n{:>4.1f}% valid SMILES".format(100*valid/len(seqs)))
                 tqdm.write("*"*50 + '\n')
                 torch.save(transfer_model.rnn.state_dict(), tf_dir)
-
+        seqs, likelihood, _ = transfer_model.sample(1024)
+        valid = 0
+        valid_smis = []
+        tmp_df = pd.DataFrame(columns=['SMILES','Epoch'])
+        for i, seq in enumerate(seqs.cpu().numpy()):
+            smile = voc.decode(seq)
+            if Chem.MolFromSmiles(smile):
+                valid += 1
+                valid_smis.append(smile)
+        tmp_df['SMILES'] = pd.Series(data=valid_smis)
+        tmp_df['Epoch'] = epoch
+        transfer_process_df.append(tmp_df)
         torch.save(transfer_model.rnn.state_dict(), tf_dir)
+    transfer_process_df.to_csv(tf_process_dir)
 
 
 def sample_smiles(voc_dir, nums, outfn,tf_dir, until=False):
@@ -140,8 +174,6 @@ def sample_smiles(voc_dir, nums, outfn,tf_dir, until=False):
 
 
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Transfer learning for SMILES generation")
     parser.add_argument('--task', action='store', dest='task', choices=['train_model', 'sample_smiles'],
@@ -158,12 +190,15 @@ if __name__ == "__main__":
                         help='Number of SMILES to sample for transfer learning')
     parser.add_argument('--save_smi',action='store',dest='save_dir',default='acceptor_1024_tuneall2.csv',
                         help='Directory to save the generated SMILES')
+    parser.add_argument('--save_process_smi',action='store',dest='tf_process_dir',default='Model1_sample_process.csv',
+                        help='Directory to save the generated SMILES')
     arg_dict = vars(parser.parse_args())
     print(arg_dict)
-    task_, voc_, smi_, prior_, tf_, nums_, save_smi_ = arg_dict.values()
+    task_, voc_, smi_, prior_, tf_, nums_, save_smi_, tf_process_dir_ = arg_dict.values()
 
     if task_ == 'train_model':
-        train_model(voc_dir=voc_, smi_dir=smi_, prior_dir=prior_, tf_dir=tf_)
+        train_model(voc_dir=voc_, smi_dir=smi_, prior_dir=prior_, tf_dir=tf_,
+                    tf_process_dir=tf_process_dir_,freeze=False)
     if task_ == 'sample_smiles':
         sample_smiles(voc_, nums_,save_smi_,tf_, until=False)
 
