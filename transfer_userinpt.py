@@ -71,7 +71,8 @@ def train_model(voc_dir, smi_dir, prior_dir, tf_dir,tf_process_dir,freeze=False)
                                                       map_location=lambda storage, loc: storage))
 
     optimizer = torch.optim.Adam(transfer_model.rnn.parameters(), lr=0.0005)
-    transfer_process_df = pd.DataFrame(columns=['SMILES', 'Epoch'])
+
+    smi_lst = []; epoch_lst = []
     for epoch in range(1, 11):
 
         for step, batch in tqdm(enumerate(data), total=len(data)):
@@ -100,17 +101,23 @@ def train_model(voc_dir, smi_dir, prior_dir, tf_dir,tf_process_dir,freeze=False)
                 torch.save(transfer_model.rnn.state_dict(), tf_dir)
         seqs, likelihood, _ = transfer_model.sample(1024)
         valid = 0
-        valid_smis = []
-        tmp_df = pd.DataFrame(columns=['SMILES','Epoch'])
+        #valid_smis = []
         for i, seq in enumerate(seqs.cpu().numpy()):
             smile = voc.decode(seq)
             if Chem.MolFromSmiles(smile):
-                valid += 1
-                valid_smis.append(smile)
-        tmp_df['SMILES'] = pd.Series(data=valid_smis)
-        tmp_df['Epoch'] = epoch
-        transfer_process_df.append(tmp_df)
+                try:
+                    AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(smile), 2, 1024)
+                    valid += 1
+                    smi_lst.append(smile)
+                    epoch_lst.append(epoch)
+                except:
+                    continue
+
         torch.save(transfer_model.rnn.state_dict(), tf_dir)
+
+    transfer_process_df = pd.DataFrame(columns=['SMILES', 'Epoch'])
+    transfer_process_df['SMILES'] = pd.Series(data=smi_lst)
+    transfer_process_df['Epoch'] = pd.Series(data=epoch_lst)
     transfer_process_df.to_csv(tf_process_dir)
 
 
