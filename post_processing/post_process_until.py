@@ -30,8 +30,9 @@ def get_smi_list_overlap(large, small):
     large_can, small_can = can_smile(large), can_smile(small)
     small_copy = deepcopy(small_can)
     overlap = set(small_can).intersection(large_can)
-    for item in overlap:
-        small_copy.remove(item)
+    #for item in overlap:
+    #    small_copy.remove(item)
+    small_copy_novel = [item for item in small_copy if item not in large_can]
     return len(overlap), len(small_copy), small_copy
 
 
