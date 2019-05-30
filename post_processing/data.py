@@ -91,4 +91,16 @@ def refine_compounds(compounds, mols, gaps, failed_mols):
         del mols[idx]
         del gaps[idx]
 
+def predict_property(model_file, fps):
+    """
+        Function to predict the properties of generated molecules
+        Args:
+        model_file: File containing pre-trained ML model for prediction
+        fps: list of molecular fingerprints
+        
+        Returns: list of predicted valued
+        
+        """
+    model = joblib.load(model_file)
+    return model.predict(fps)
 
