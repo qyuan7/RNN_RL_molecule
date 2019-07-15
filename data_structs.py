@@ -233,11 +233,16 @@ def canonicalize_smiles_from(fname):
             smiles = line.split(" ")[0]
             mol = Chem.MolFromSmiles(smiles)
             #if filter_mol(mol): #Don't filter mol for donor-acceptors since heavy atoms with varied elements exhist.
-            smiles_list.append(Chem.MolToSmiles(mol))
+            try:
+                smi = Chem.MolToSmiles(mol)
+                smiles_list.append(Chem.MolToSmiles(mol))
+            except:
+                print(smiles)
+                continue
             if (i+1) % 100000 == 0:
                 print("{} lines processed".format(i+1))
 
-        print("{} SMILES retrieved".format(len(smiles_list)))
+                print("{} SMILES retrieved".format(len(smiles_list)))
         return smiles_list
 
 
@@ -355,7 +360,7 @@ def construct_vocabulary(smiles_list):
                 chars = [unit for unit in char]
                 [add_chars.add(unit) for unit in chars]
     print("Number of characters: {}".format(len(add_chars)))
-    with open('data/Voc_withda', 'w') as f:
+    with open('data/Voc_cep', 'w') as f:
         for char in add_chars:
             f.write(char + '\n')
     return add_chars
@@ -368,7 +373,7 @@ if __name__ == "__main__":
     #deep_lst = convert_to_deepsmile(smiles_list)
     print('Constructing vocabulary...')
     voc_chars = construct_vocabulary(smiles_list)
-    write_smiles_to_file(smiles_list, "data/ChEMBL_from_gua_withda_filter.smi")
+    write_smiles_to_file(smiles_list, "data/CEP_cano.smi")
 
 
 
