@@ -19,6 +19,4 @@ First filter the SMILES and construct a vocabulary from the remaining sequences.
 
 Then use ./train_prior.py to train the Prior. A pretrained Prior is included.
 
-To train an Agent using our Prior, use the main.py script. For example:
-
-./main.py --scoring-function activity_model --num-steps 1000
+To do transfer learning on a target dataset, use transfer_userinpt.py.
