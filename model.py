@@ -64,6 +64,7 @@ class RNN():
         #    collated_arr[i, :seq.size(0)] = seq
         #return collated_arr
         seq_lens, target = pad_seq(target)
+        target = Variable(target)
         batch_size, seq_length = target.size()
         start_token = Variable(torch.zeros(batch_size, 1).long())
         start_token[:] = self.voc.vocab['GO']
