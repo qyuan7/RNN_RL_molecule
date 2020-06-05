@@ -1,4 +1,7 @@
 # RNN and RL model for molecular generation
+Models and codes for the paper: 
+[Molecular Generation Targeting Desired Electronic Properties via Deep Generative Models](https://chemrxiv.org/articles/Molecular_Generation_Targeting_Desired_Electronic_Properties_via_Deep_Generative_Models/9913865)
+
 Prior model adapted and modified from https://arxiv.org/abs/1704.07555
 ## Requirements
 
